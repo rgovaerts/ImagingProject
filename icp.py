@@ -26,14 +26,14 @@ last consulted 8/11/2013
 
 def rigid_transform_3D(A, B):
     assert len(A) == len(B)
-    N = A.shape[0]; # total points
-    centroid_A = mean(A, axis=0)
-    centroid_B = mean(B, axis=0)
+    N = A.shape[1]; # total points
+    centroid_A = mean(A, axis=1)
+    centroid_B = mean(B, axis=1)
     # centre the points
-    AA = A - tile(centroid_A, (N, 1))
-    BB = B - tile(centroid_B, (N, 1))
+    AA = A - tile(centroid_A, (N, 1)).T
+    BB = B - tile(centroid_B, (N, 1)).T
     # dot is matrix multiplication for array
-    H = dot(AA.T,BB)
+    H = dot(AA,BB.T)
     U, S, Vt = linalg.svd(H)
     R = dot(Vt,U.T)
     # special reflection case
@@ -46,7 +46,8 @@ def rigid_transform_3D(A, B):
     
 import pylab
 from scipy.spatial import KDTree
-def ICP_3D(a,b, error):
+def ICP_3D(source,target, error, iternum):
+
     """
     Returns A transformed so that it matches B as closely as posible
     
@@ -60,48 +61,63 @@ def ICP_3D(a,b, error):
     http://en.wikipedia.org/wiki/Iterative_closest_point
     http://en.wikipedia.org/wiki/Point_Set_Registration#Iterative_closest_point
     """
-    n = a.shape[0] #number of points
-    B = b
-    tree1 = KDTree(a)
-    tree2 = KDTree(b)
+    n = source.shape[0] #number of points
+    B = target
+    tree1 = KDTree(source)
+    tree2 = KDTree(target)
     # 1.Associate points by the nearest neighbor criteria
-    dist,indices = tree1.query(b, k=1, eps=0, p=2, distance_upper_bound=inf)
-    A = zeros_like(a)
+    #points given in data are matched
+    """
+    dist,indices = tree1.query(target, k=1, eps=0, p=2, distance_upper_bound= inf)     
+    
+    A = zeros_like(source)
     j = 0
     for i in indices:
-        A[j] = a[i]
+        A[j] = source[i]
         j+=1
+    """
+    source_sample = zeros((20,3))
+    target_sample = zeros((20,3))
+    # random subsampling of 10 points
+    for i in range(20):
+        ind = np.random.randint(0,n)
+        source_sample[i] = source[ind]
+        target_sample[i] = target[ind]
+   
     # 2.Estimate transformation parameters (rotation and translation)
-    ret_R, ret_t = rigid_transform_3D(A, b)
+    ret_R, ret_t = rigid_transform_3D(source_sample.T ,target_sample.T)
     # 3.Transform the points using the estimated parameters.
-    A2 = dot(ret_R,A.T) + tile(ret_t, (n, 1)).T
+    A2 = dot(ret_R,source.T) + tile(ret_t, (n, 1)).T
     A2 = A2.T
     # Find the square error (MSE)
-    err = A2 - B
+    err = A2 - target
     mse = sum(np.square(err))/n
     print mse
-    if mse > error:
-        # 4.Iterate
-        A2 = ICP_3D(A2, B, error)
+    if mse < np.square(error) or iternum > 5:
+        print "stop"
         return A2
     else:
+        # 4.Iterate
+        iternum += 1
+        A2 = ICP_3D(A2, target, error, iternum)
         return A2
         
 import os
 import numpy as np
 from matplotlib import pyplot
 
+numPoints = 200
+points = random.rand(numPoints,3)
+points[:,0] = np.linspace(-1, 1, numPoints)
+points[:,1] = 0 #np.linspace(-1, 1, numPoints)
+points[:,2] = np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10
 
+#random.rand(numPoints) / 10 
+#np.square(np.sin(np.linspace(0, 3*np.pi, numPoints))) / 10 
 
-n = 100
-points = random.rand(n,3)
-points[:,0] = np.linspace(-1, 1, n)
-points[:,1] = 0
-points[:,2] = np.square(np.sin(np.linspace(0, np.pi, n))) / 3
-
-angle1 = random.rand() % 0.2
-angle2 = random.rand() % 0.2
-angle3 = random.rand() % 0.2
+angle1 = random.rand() / 12
+angle2 = random.rand() / 12
+angle3 = random.rand() / 12
 #X rot matrix
 rotX = np.zeros([3,3])
 rotX[2,2] = math.cos(angle1)
@@ -126,13 +142,14 @@ rotZ[2,2] = 1
 #total rotation matrix
 rot = dot(rotX,dot(rotY,rotZ))
 #translation matrix
-tran = random.rand(1,3) / 3
+tran = random.rand(1,3) / 8
 
 #translated & rotated set of points
 new_points = dot(rot,points.T)  + tile(tran, (points.shape[0], 1)).T
 new_points = new_points.T
-error = 1
-res = ICP_3D(points,new_points, error)
+error = 0.01
+res = ICP_3D(points,new_points, error, 0)
+
 x = points.T[0]
 y = points.T[1]
 z = points.T[2]
@@ -150,6 +167,5 @@ points3d(res_x, res_y, res_z, color=(0, 1, 0), scale_factor=.02 )
 points3d(x2, y2, z2, color=(1, 0, 0), scale_factor=.02)
 show()
 
-# <codecell>
 
 
