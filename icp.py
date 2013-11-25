@@ -38,13 +38,13 @@ def rigid_transform_3D(A, B):
     R = dot(Vt,U.T)
     # special reflection case
     if linalg.det(R) < 0:
-       print "Reflection detected"
-       Vt[2,:] *= -1
-       R = dot(Vt,U.T)
+        print "Reflection detected"
+        Vt[2,:] *= -1
+        R = dot(Vt,U.T)
     t = -dot(R,centroid_A) + centroid_B
     return R, t
     
-import pylab
+#import pylab
 from scipy.spatial import KDTree
 def ICP_3D(source,target, error, iternum):
 
@@ -104,13 +104,13 @@ def ICP_3D(source,target, error, iternum):
         
 import os
 import numpy as np
-from matplotlib import pyplot
+#from matplotlib import pyplot
 
-numPoints = 200
+numPoints = 500
 points = random.rand(numPoints,3)
 points[:,0] = np.linspace(-1, 1, numPoints)
-points[:,1] = 0 #np.linspace(-1, 1, numPoints)
-points[:,2] = np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10
+points[:,1] = random.rand(numPoints) % 0.1 #np.linspace(-1, 1, numPoints)
+points[:,2] = random.rand(numPoints) #np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10
 
 #random.rand(numPoints) / 10 
 #np.square(np.sin(np.linspace(0, 3*np.pi, numPoints))) / 10 
@@ -142,7 +142,7 @@ rotZ[2,2] = 1
 #total rotation matrix
 rot = dot(rotX,dot(rotY,rotZ))
 #translation matrix
-tran = random.rand(1,3) / 8
+tran = random.rand(1,3) / 2
 
 #translated & rotated set of points
 new_points = dot(rot,points.T)  + tile(tran, (points.shape[0], 1)).T
