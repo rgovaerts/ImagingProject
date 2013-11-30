@@ -62,30 +62,36 @@ def ICP_3D(source,target, error, iternum):
     http://en.wikipedia.org/wiki/Point_Set_Registration#Iterative_closest_point
     """
     n = source.shape[0] #number of points
-    B = target
-    tree1 = KDTree(source)
-    tree2 = KDTree(target)
-    # 1.Associate points by the nearest neighbor criteria
-    #points given in data are matched
-    """
-    dist,indices = tree1.query(target, k=1, eps=0, p=2, distance_upper_bound= inf)     
     
-    A = zeros_like(source)
-    j = 0
-    for i in indices:
-        A[j] = source[i]
-        j+=1
-    """
-    source_sample = zeros((20,3))
-    target_sample = zeros((20,3))
-    # random subsampling of 10 points
-    for i in range(20):
+    # random subsampling % of the point cloud
+    subsample_percentage = 1
+    source_sample = zeros((int(n * subsample_percentage),3))
+    target_sample = zeros((int(n * subsample_percentage),3))
+    for i in range(int(n * subsample_percentage)):
         ind = np.random.randint(0,n)
         source_sample[i] = source[ind]
         target_sample[i] = target[ind]
-   
+
+    tree1 = KDTree(source_sample)
+    #tree2 = KDTree(target_sample)
+    # 1.Associate points by the nearest neighbor criteria
+    distanceBound = 0.1
+    dist,indices = tree1.query(target_sample, k=1, eps=0, p=2, distance_upper_bound= distanceBound)   
+
+    NNcount = 0
+    for i in range(shape(indices)[0]):
+        if indices[i] != shape(source_sample)[0]:
+            NNcount += 1
+    NNsource = zeros((NNcount,3))
+    NNtarget = zeros((NNcount,3))
+    j = 0
+    for i in range(shape(indices)[0]):
+        if indices[i] != shape(source_sample)[0]:
+            NNsource[j] = source_sample[indices[i]]
+            NNtarget[j] = target_sample[i]
+            j +=1
     # 2.Estimate transformation parameters (rotation and translation)
-    ret_R, ret_t = rigid_transform_3D(source_sample.T ,target_sample.T)
+    ret_R, ret_t = rigid_transform_3D(NNsource.T ,NNtarget.T)
     # 3.Transform the points using the estimated parameters.
     A2 = dot(ret_R,source.T) + tile(ret_t, (n, 1)).T
     A2 = A2.T
@@ -93,7 +99,7 @@ def ICP_3D(source,target, error, iternum):
     err = A2 - target
     mse = sum(np.square(err))/n
     print mse
-    if mse < np.square(error) or iternum > 5:
+    if mse < np.square(error) or iternum >= 20:
         print "stop"
         return A2
     else:
@@ -104,17 +110,15 @@ def ICP_3D(source,target, error, iternum):
         
 import os
 import numpy as np
-#from matplotlib import pyplot
 
-numPoints = 500
+#we give ourselves a cloud point
+numPoints = 1000
 points = random.rand(numPoints,3)
-points[:,0] = np.linspace(-1, 1, numPoints)
-points[:,1] = random.rand(numPoints) % 0.1 #np.linspace(-1, 1, numPoints)
-points[:,2] = random.rand(numPoints) #np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10
+points[:,0] = np.exp(np.linspace(-1, 1, numPoints)) #np.exp(np.linspace(-1, 1, numPoints))
+points[:,1] = random.rand(numPoints) #random.rand(numPoints) #np.linspace(-1, 1, numPoints)
+points[:,2] = np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10
 
-#random.rand(numPoints) / 10 
-#np.square(np.sin(np.linspace(0, 3*np.pi, numPoints))) / 10 
-
+#random angles for rotation matrix
 angle1 = random.rand() / 12
 angle2 = random.rand() / 12
 angle3 = random.rand() / 12
@@ -142,12 +146,12 @@ rotZ[2,2] = 1
 #total rotation matrix
 rot = dot(rotX,dot(rotY,rotZ))
 #translation matrix
-tran = random.rand(1,3) / 2
+tran = random.rand(1,3) / 5 #[0.05,0.1,0.1]#random.rand(1,3) / 5
 
 #translated & rotated set of points
 new_points = dot(rot,points.T)  + tile(tran, (points.shape[0], 1)).T
 new_points = new_points.T
-error = 0.01
+error = 0.08
 res = ICP_3D(points,new_points, error, 0)
 
 x = points.T[0]
