@@ -64,7 +64,7 @@ def ICP_3D(source,target, error, iternum):
     n = source.shape[0] #number of points
     
     # random subsampling % of the point cloud
-    subsample_percentage = 1
+    subsample_percentage = 0.5
     source_sample = zeros((int(n * subsample_percentage),3))
     target_sample = zeros((int(n * subsample_percentage),3))
     for i in range(int(n * subsample_percentage)):
@@ -99,7 +99,7 @@ def ICP_3D(source,target, error, iternum):
     err = A2 - target
     mse = sum(np.square(err))/n
     print mse
-    if mse < np.square(error) or iternum >= 20:
+    if mse < np.square(error) or iternum >= 100:
         print "stop"
         return A2
     else:
@@ -112,11 +112,11 @@ import os
 import numpy as np
 
 #we give ourselves a cloud point
-numPoints = 1000
+numPoints = 5000
 points = random.rand(numPoints,3)
-points[:,0] = np.exp(np.linspace(-1, 1, numPoints)) #np.exp(np.linspace(-1, 1, numPoints))
-points[:,1] = random.rand(numPoints) #random.rand(numPoints) #np.linspace(-1, 1, numPoints)
-points[:,2] = np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10
+points[:,0] = np.linspace(-1, 1, numPoints) #np.exp(np.linspace(-1, 1, numPoints))  #np.exp(np.linspace(-1, 1, numPoints))
+points[:,1] = random.rand(numPoints) + np.square(np.linspace(-1, 1, numPoints)) / 2 #random.rand(numPoints) #np.linspace(-1, 1, numPoints)
+points[:,2] = np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10 + np.square(np.linspace(-1, 1, numPoints)) / 2
 
 #random angles for rotation matrix
 angle1 = random.rand() / 12
@@ -146,12 +146,12 @@ rotZ[2,2] = 1
 #total rotation matrix
 rot = dot(rotX,dot(rotY,rotZ))
 #translation matrix
-tran = random.rand(1,3) / 5 #[0.05,0.1,0.1]#random.rand(1,3) / 5
+tran = [0.05,0.1,0.1]#random.rand(1,3) / 5
 
 #translated & rotated set of points
 new_points = dot(rot,points.T)  + tile(tran, (points.shape[0], 1)).T
 new_points = new_points.T
-error = 0.08
+error = 0.03
 res = ICP_3D(points,new_points, error, 0)
 
 x = points.T[0]
