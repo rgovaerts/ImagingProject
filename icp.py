@@ -25,6 +25,7 @@ last consulted 8/11/2013
 """
 
 def rigid_transform_3D(A, B):
+    """ returns R, t the rotation and translation matrix between A and B """
     assert len(A) == len(B)
     N = A.shape[1]; # total points
     centroid_A = mean(A, axis=1)
@@ -46,7 +47,7 @@ def rigid_transform_3D(A, B):
     
 #import pylab
 from scipy.spatial import KDTree
-def ICP_3D(source,target, error, iternum):
+def ICP_3D(source,target, error, iternum, maxIter):
 
     """
     Returns A transformed so that it matches B as closely as posible
@@ -64,7 +65,7 @@ def ICP_3D(source,target, error, iternum):
     n = source.shape[0] #number of points
     
     # random subsampling % of the point cloud
-    subsample_percentage = 0.5
+    subsample_percentage = 0.05
     source_sample = zeros((int(n * subsample_percentage),3))
     target_sample = zeros((int(n * subsample_percentage),3))
     for i in range(int(n * subsample_percentage)):
@@ -99,13 +100,13 @@ def ICP_3D(source,target, error, iternum):
     err = A2 - target
     mse = sum(np.square(err))/n
     print mse
-    if mse < np.square(error) or iternum >= 100:
+    if mse < np.square(error) or iternum >= maxIter:
         print "stop"
         return A2
     else:
         # 4.Iterate
         iternum += 1
-        A2 = ICP_3D(A2, target, error, iternum)
+        A2 = ICP_3D(A2, target, error, iternum, maxIter)
         return A2
         
 import os
@@ -113,11 +114,15 @@ import numpy as np
 
 #we give ourselves a cloud point
 numPoints = 5000
-points = random.rand(numPoints,3)
+points = np.zeros((numPoints,3))
 points[:,0] = np.linspace(-1, 1, numPoints) #np.exp(np.linspace(-1, 1, numPoints))  #np.exp(np.linspace(-1, 1, numPoints))
 points[:,1] = random.rand(numPoints) + np.square(np.linspace(-1, 1, numPoints)) / 2 #random.rand(numPoints) #np.linspace(-1, 1, numPoints)
-points[:,2] = np.sin(np.linspace(0, 10*np.pi, numPoints)) / 10 + np.square(np.linspace(-1, 1, numPoints)) / 2
+points[:,2] = 0.75*np.sin(np.linspace(0, 20*np.pi, numPoints)) / 10 + np.square(np.linspace(-1, 1, numPoints)) / 2
+"""
+noise = random.rand(numPoints,3) / 75
 
+points = points + noise
+"""
 #random angles for rotation matrix
 angle1 = random.rand() / 12
 angle2 = random.rand() / 12
@@ -151,8 +156,9 @@ tran = [0.05,0.1,0.1]#random.rand(1,3) / 5
 #translated & rotated set of points
 new_points = dot(rot,points.T)  + tile(tran, (points.shape[0], 1)).T
 new_points = new_points.T
-error = 0.03
-res = ICP_3D(points,new_points, error, 0)
+#new_points = new_points + noise
+error = 0.01
+res = ICP_3D(points,new_points, error, 0, 100)
 
 x = points.T[0]
 y = points.T[1]
@@ -166,9 +172,9 @@ z2 = new_points.T[2]
 
 
 from mayavi.mlab import *
-points3d(x, y, z, color=(0, 0, 1), scale_factor=.02 )
-points3d(res_x, res_y, res_z, color=(0, 1, 0), scale_factor=.02 )
-points3d(x2, y2, z2, color=(1, 0, 0), scale_factor=.02)
+points3d(x, y, z, color=(0, 0, 1), scale_factor=.01 )
+points3d(res_x, res_y, res_z, color=(0, 1, 0), scale_factor=.01 )
+points3d(x2, y2, z2, color=(1, 0, 0), scale_factor=.01)
 show()
 
 
